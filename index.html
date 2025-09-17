@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-<title>Flash Cards — Date-wise + IDB media</title>
+<title>Flash Cards — Date-wise + IDB media + Edit</title>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <style>
 :root{--bg:#0f1220;--card:#181c2f;--ink:#eef1ff;--muted:#9aa3c7;--line:#2a3052;--accent:#6ca8ff;--ok:#7bd88f;--bad:#ff7575}
@@ -34,8 +34,11 @@ h1{margin:0;font-size:18px}
 .side.back{transform:rotateY(180deg)}
 .side .hint{font-weight:600;font-size:12px;color:var(--muted)}
 .dateChip{position:absolute;top:-22px;left:50%;transform:translateX(-50%);background:var(--bg);color:var(--ok);border:2px solid var(--ok);font-weight:700;font-size:12px;padding:2px 10px;border-radius:9999px;white-space:nowrap}
-.delBtn{position:absolute;top:-26px;right:-2px;border:1px solid var(--line);background:var(--card);color:#ffd1d1;border-radius:999px;padding:4px 8px;font-size:12px;cursor:pointer}
-.delBtn:hover{border-color:#ff8a8a;color:#fff;background:#7a1d1d}
+.btnRow{position:absolute;top:-26px;right:-2px;display:flex;gap:6px}
+.cardBtn{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:4px 8px;font-size:12px;cursor:pointer;color:#ddd}
+.cardBtn:hover{border-color:#9aa3c7}
+.cardBtn.del{color:#ffd1d1}
+.cardBtn.del:hover{border-color:#ff8a8a;color:#fff;background:#7a1d1d}
 #sentinel{height:1px}
 
 /* Media */
@@ -47,7 +50,7 @@ audio{width:100%;outline:none;border-radius:10px}
 
 /* Modal */
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:10;padding:20px}
-.modalCard{background:var(--card);border:1px solid var(--line);border-radius:16px;max-width:720px;width:100%;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+.modalCard{background:var(--card);border:1px solid var(--line);border-radius:16px;max-width:780px;width:100%;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.4)}
 .modal h2{margin:0 0 8px 0;font-size:18px}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .grid>label{display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--muted)}
@@ -56,6 +59,12 @@ textarea{min-height:70px;resize:vertical}
 .row{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
 .small{font-size:12px;color:var(--muted)}
 hr{border:none;border-top:1px solid var(--line);margin:8px 0}
+
+/* chips (existing media) */
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:flex;align-items:center;gap:6px;background:#0b1328;border:1px solid var(--line);border-radius:999px;padding:4px 8px;font:600 12px/1 system-ui;color:#cfd7ff}
+.chip b{font-weight:700}
+.chip button{border:none;background:transparent;color:#ff9a9a;cursor:pointer;font-weight:800}
 </style>
 </head>
 <body>
@@ -76,7 +85,7 @@ hr{border:none;border-top:1px solid var(--line);margin:8px 0}
   <div id="sentinel"></div>
 </div>
 
-<footer><div class="badge">Media stored in IndexedDB (no localStorage quota issues)</div></footer>
+<footer><div class="badge">Media in IndexedDB. Edits & deletes persist locally.</div></footer>
 
 <!-- START -->
 <div id="startScreen">
@@ -87,7 +96,7 @@ hr{border:none;border-top:1px solid var(--line);margin:8px 0}
   </div>
 </div>
 
-<!-- ADD MODAL -->
+<!-- ADD / EDIT MODAL -->
 <div id="modal" class="modal" role="dialog" aria-modal="true">
   <div class="modalCard">
     <h2 id="modalTitle">Add card</h2>
@@ -104,12 +113,14 @@ hr{border:none;border-top:1px solid var(--line);margin:8px 0}
       <label style="grid-column:1/-1">Details / Notes
         <textarea id="fDetails" placeholder="1–3 lines of context"></textarea>
       </label>
+
       <label>Image URLs (comma-separated)
         <input id="fImgUrls" type="text" placeholder="images/a.jpg, https://…">
       </label>
       <label>Audio URLs (comma-separated)
         <input id="fAudUrls" type="text" placeholder="audio/a.mp3, https://…">
       </label>
+
       <label>Attach Images (optional)
         <input id="fImgFiles" type="file" accept="image/*" multiple>
         <span class="small">Stored in IndexedDB (compressed jpg for size).</span>
@@ -118,7 +129,18 @@ hr{border:none;border-top:1px solid var(--line);margin:8px 0}
         <input id="fAudFiles" type="file" accept="audio/*" multiple>
         <span class="small">Use .mp3/.m4a for iPad.</span>
       </label>
+
+      <!-- Existing media (edit mode) -->
+      <div style="grid-column:1/-1">
+        <div class="small">Existing Images (tap × to remove)</div>
+        <div id="chipsImg" class="chips"></div>
+      </div>
+      <div style="grid-column:1/-1">
+        <div class="small">Existing Audio (tap × to remove)</div>
+        <div id="chipsAud" class="chips"></div>
+      </div>
     </div>
+
     <hr>
     <div id="modalErr" class="small" style="color:var(--bad)"></div>
     <div class="row">
@@ -130,11 +152,11 @@ hr{border:none;border-top:1px solid var(--line);margin:8px 0}
 
 <script>
 /* ========= SETTINGS ========= */
-const JSON_URL = 'cards.json';                     // optional base data
-const CHUNK = 12;                                  // cards per batch
-const statesBase = ['date','event','details','place']; // tap order start
-const LSK  = 'flashcards_datewise_user_v1';        // local cards (meta only)
-const LSKD = 'flashcards_datewise_deleted_v1';     // deleted base ids
+const JSON_URL = 'cards.json';
+const CHUNK = 12;
+const statesBase = ['date','event','details','place'];
+const LSK  = 'flashcards_datewise_user_v1';
+const LSKD = 'flashcards_datewise_deleted_v1';
 
 /* ========= ELEMENTS ========= */
 const startBtn=document.getElementById('startBtn'), startScreen=document.getElementById('startScreen');
@@ -146,12 +168,17 @@ const fDate=document.getElementById('fDate'), fPlace=document.getElementById('fP
 const fEvent=document.getElementById('fEvent'), fDetails=document.getElementById('fDetails');
 const fImgUrls=document.getElementById('fImgUrls'), fAudUrls=document.getElementById('fAudUrls');
 const fImgFiles=document.getElementById('fImgFiles'), fAudFiles=document.getElementById('fAudFiles');
+const chipsImg=document.getElementById('chipsImg'), chipsAud=document.getElementById('chipsAud');
 const cancelBtn=document.getElementById('cancelBtn'), saveBtn=document.getElementById('saveBtn');
 
 /* ========= DATA ========= */
 let master=[], pool=[], io=null;
 const delSet = new Set(JSON.parse(localStorage.getItem(LSKD)||'[]'));
-const cardSeq = new WeakMap(); // element-> sequence
+const cardSeq = new WeakMap(); // per-card tap sequence
+
+/* modal state */
+let editMode=false, editingObj=null;
+let editImgs=[], editAuds=[];
 
 /* ========= IndexedDB (media) ========= */
 const DB_NAME='flashcards_media_db', DB_VER=1, STORE='media';
@@ -224,16 +251,14 @@ async function compressImageToBlob(file, maxDim=1280, quality=0.72){
   return await new Promise(res=> cvs.toBlob(b=>res(b), 'image/jpeg', quality) );
 }
 
-/* Resolve any <img data-idb="id"> or <source data-idb="id"> inside node */
+/* Resolve idb refs in a block */
 async function resolveIdbMedia(root){
-  // images
   for(const img of root.querySelectorAll('img[data-idb]')){
     const id = img.dataset.idb; try{
       const blob = await idbGetBlob(id); const url = URL.createObjectURL(blob);
       img.src = url;
     }catch{}
   }
-  // audio
   for(const aud of root.querySelectorAll('audio')){
     let changed=false;
     for(const src of aud.querySelectorAll('source[data-idb]')){
@@ -242,7 +267,7 @@ async function resolveIdbMedia(root){
         src.src = url; changed = true;
       }catch{}
     }
-    if(changed){ aud.load(); }
+    if(changed) aud.load();
   }
 }
 
@@ -263,12 +288,7 @@ function normalize(item, asLocal){
   if(asLocal){ obj._local=true; obj._uid=genUid(); }
   return obj;
 }
-function readLocalAdds(){
-  try{
-    const arr=JSON.parse(localStorage.getItem(LSK)||'[]');
-    return Array.isArray(arr)?arr:[];
-  }catch{ return []; }
-}
+function readLocalAdds(){ try{ const arr=JSON.parse(localStorage.getItem(LSK)||'[]'); return Array.isArray(arr)?arr:[]; }catch{ return []; } }
 function saveLocalAdds(arr){ localStorage.setItem(LSK, JSON.stringify(arr)); }
 
 /* ========= BOOT ========= */
@@ -279,7 +299,7 @@ async function init(){
     let base=[]; try{ const r=await fetch(JSON_URL,{cache:'no-store'}); if(r.ok) base=await r.json(); }catch{}
     if(!Array.isArray(base)) base=[];
     const normBase = base.map(x=>normalize(x,false)).filter(x=>x.dateTs!=null);
-    const localAdds = readLocalAdds(); // already normalized when we saved
+    const localAdds = readLocalAdds();
     master = normBase.filter(x=>!delSet.has(x._id)).concat(localAdds);
     sortMaster(); refillPool();
     startScreen.style.display='none';
@@ -310,10 +330,14 @@ function addCard(d){
   pill.append(front,back);
 
   const chip=el('div','dateChip', d.dateStr);
-  const del =el('button','delBtn','🗑 Delete');
-  del.addEventListener('click', ev=>{ ev.stopPropagation(); handleDelete(d); });
+  const btnRow=el('div','btnRow');
+  const editBtn=el('button','cardBtn','✎ Edit');
+  editBtn.addEventListener('click', ev=>{ ev.stopPropagation(); openModal('edit', d); });
+  const delBtn=el('button','cardBtn del','🗑 Delete');
+  delBtn.addEventListener('click', ev=>{ ev.stopPropagation(); handleDelete(d); });
+  btnRow.append(editBtn, delBtn);
 
-  card.append(pill,chip,del);
+  card.append(pill,chip,btnRow);
 
   card.addEventListener('click', ev=>{
     if(ev.target.tagName==='AUDIO'||ev.target.closest('.audioWrap')) return;
@@ -357,35 +381,61 @@ async function handleDelete(d){
   if(!confirm(`Delete ${d.dateStr}?`)) return;
 
   if(d._local){
-    // remove local record
     const adds=readLocalAdds();
     const idx=adds.findIndex(x=>x._uid===d._uid);
-    if(idx>-1){
-      // clean up idb blobs
-      await deleteIdbRefs(adds[idx]);
-      adds.splice(idx,1); saveLocalAdds(adds);
-    }
+    if(idx>-1){ await deleteIdbRefs(adds[idx]); adds.splice(idx,1); saveLocalAdds(adds); }
   }else{
     delSet.add(d._id); localStorage.setItem(LSKD, JSON.stringify([...delSet]));
   }
   master = master.filter(x=>x!==d);
-  timeline.innerHTML=''; pool.length=0; refillPool(); loadMore();
+  rebuild();
 }
 async function deleteIdbRefs(obj){
   const imgs=toArr(obj.images||obj.image); for(const u of imgs){ if(typeof u==='string' && u.startsWith('idb:')){ try{ await idbDelete(u.slice(4)); }catch{} } }
   const auds=toArr(obj.audio||obj.audios); for(const u of auds){ if(typeof u==='string' && u.startsWith('idb:')){ try{ await idbDelete(u.slice(4)); }catch{} } }
 }
 
-/* ========= ADD (UI) ========= */
-addBtn.addEventListener('click', ()=>openModal());
-cancelBtn.addEventListener('click', ()=>modal.style.display='none');
+/* ========= ADD / EDIT ========= */
+addBtn.addEventListener('click', ()=> openModal('add'));
+cancelBtn.addEventListener('click', ()=> modal.style.display='none');
 modal.addEventListener('click', e=>{ if(e.target===modal) modal.style.display='none'; });
 
-function openModal(){
-  modalTitle.textContent='Add card'; modalErr.textContent='';
-  fDate.value=''; fPlace.value=''; fEvent.value=''; fDetails.value='';
+function openModal(mode, obj=null){
+  editMode = (mode==='edit');
+  editingObj = obj;
+  modalTitle.textContent = editMode ? 'Edit card' : 'Add card';
+  modalErr.textContent = '';
+
+  // preset fields
+  if(editMode && obj){
+    fDate.value = obj.dateStr;
+    fPlace.value = obj.place || '';
+    fEvent.value = obj.event || '';
+    fDetails.value = obj.details || '';
+    editImgs = [...toArr(obj.images||obj.image)];
+    editAuds = [...toArr(obj.audio||obj.audios||obj.sound)];
+  }else{
+    fDate.value=''; fPlace.value=''; fEvent.value=''; fDetails.value='';
+    editImgs = []; editAuds = [];
+  }
   fImgUrls.value=''; fAudUrls.value=''; fImgFiles.value=''; fAudFiles.value='';
+
+  renderChips(chipsImg, editImgs, 'img');
+  renderChips(chipsAud, editAuds, 'aud');
+
   modal.style.display='flex'; fDate.focus();
+}
+
+function renderChips(container, arr, kind){
+  container.innerHTML='';
+  if(!arr.length){ container.innerHTML='<span class="small">— none —</span>'; return; }
+  arr.forEach((u, idx)=>{
+    const chip = document.createElement('span'); chip.className='chip';
+    const label = (typeof u==='string' && u.startsWith('idb:')) ? `${kind.toUpperCase()}(IDB)` : (String(u).length>32?('…'+String(u).slice(-32)):String(u));
+    chip.innerHTML = `<b>${label}</b> <button title="remove" aria-label="remove">×</button>`;
+    chip.querySelector('button').addEventListener('click', ()=>{ arr.splice(idx,1); renderChips(container, arr, kind); });
+    container.appendChild(chip);
+  });
 }
 
 saveBtn.addEventListener('click', async ()=>{
@@ -398,30 +448,65 @@ saveBtn.addEventListener('click', async ()=>{
     const imgUrls=splitUrls(fImgUrls.value);
     const audUrls=splitUrls(fAudUrls.value);
 
-    // Attached files -> store in IDB, return idb:ids
+    // New attachments -> IDB refs
     const idbImgs=[], idbAuds=[];
     for(const file of [...(fImgFiles.files||[])]){ const blob=await compressImageToBlob(file); const id=await idbPutBlob('img', blob); idbImgs.push('idb:'+id); }
     for(const file of [...(fAudFiles.files||[])]){ const id=await idbPutBlob('aud', file); idbAuds.push('idb:'+id); }
 
-    const item={
+    const updated = {
       dateTs:ts, dateStr:[pad(d),pad(m),y].join('-'), year:y, month:m, day:d,
-      event: (fEvent.value||'').trim() || null,
-      details: (fDetails.value||'').trim() || null,
-      place: (fPlace.value||'').trim() || null,
-      images:[...imgUrls, ...idbImgs],
-      audio:[...audUrls, ...idbAuds],
-      _local:true, _uid:genUid()
+      event:(fEvent.value||'').trim()||null,
+      details:(fDetails.value||'').trim()||null,
+      place:(fPlace.value||'').trim()||null,
+      images:[...editImgs, ...imgUrls, ...idbImgs],
+      audio:[...editAuds, ...audUrls, ...idbAuds]
     };
-    item._id = makeId(item);
+    updated._id = makeId(updated);
 
-    const adds=readLocalAdds(); adds.push(item); saveLocalAdds(adds);
-    master.push(item); sortMaster(); timeline.innerHTML=''; pool.length=0; refillPool(); loadMore();
+    if(editMode && editingObj){
+      if(editingObj._local){
+        // update in local store
+        const adds=readLocalAdds();
+        const ix=adds.findIndex(x=>x._uid===editingObj._uid);
+        if(ix>-1){
+          // delete any removed IDB media
+          await cleanupRemovedMedia(adds[ix], updated);
+          adds[ix] = {...adds[ix], ...updated};
+          saveLocalAdds(adds);
+        }
+        // update in master
+        Object.assign(editingObj, updated);
+      }else{
+        // editing a base card: hide original, add a local clone
+        delSet.add(editingObj._id); localStorage.setItem(LSKD, JSON.stringify([...delSet]));
+        const clone = {_local:true,_uid:genUid(), ...updated};
+        const adds=readLocalAdds(); adds.push(clone); saveLocalAdds(adds);
+        master = master.filter(x=>x!==editingObj).concat(clone);
+      }
+    }else{
+      // brand new card
+      const newItem = {_local:true,_uid:genUid(), ...updated};
+      const adds=readLocalAdds(); adds.push(newItem); saveLocalAdds(adds);
+      master.push(newItem);
+    }
+
+    sortMaster(); rebuild();
     modal.style.display='none';
   }catch(e){ modalErr.textContent=e.message; }
 });
 
+/* delete IDB blobs that were removed during edit (only for local items) */
+async function cleanupRemovedMedia(prev, next){
+  const prevImgs = new Set(toArr(prev.images||prev.image));
+  for(const u of toArr(next.images)){ prevImgs.delete(u); }
+  for(const u of prevImgs){ if(typeof u==='string' && u.startsWith('idb:')){ try{ await idbDelete(u.slice(4)); }catch{} } }
+
+  const prevAuds = new Set(toArr(prev.audio||prev.audios));
+  for(const u of toArr(next.audio)){ prevAuds.delete(u); }
+  for(const u of prevAuds){ if(typeof u==='string' && u.startsWith('idb:')){ try{ await idbDelete(u.slice(4)); }catch{} } }
+}
+
 /* ========= EXPORT / IMPORT ========= */
-/* Export converts IDB refs to data-URLs so the JSON is portable. */
 exportBtn.addEventListener('click', async ()=>{
   const out=[];
   for(const x of master){
@@ -449,17 +534,20 @@ importInp.addEventListener('change', async ()=>{
     const newOnes=[];
     for(const raw of arr){
       const n=normalize(raw,true); if(!n.dateTs) continue;
-      // If imported JSON has data-URLs, move media into IDB and swap to idb: refs
       const imgs=[]; for(const u of toArr(n.images)){ if(typeof u==='string' && u.startsWith('data:')){ const blob=await (await fetch(u)).blob(); const id=await idbPutBlob('img', blob); imgs.push('idb:'+id);} else imgs.push(u); }
-      const auds=[]; for(const u of toArr(n.audio)){ if(typeof u==='string' && u.startsWith('data:')){ const blob=await (await fetch(u)).blob(); const id=await idbPutBlob('aud', blob); auds.push('idb:'+id);} else auds.push(u); }
+      const auds=[]; for(const u of toArr(n.audio)){ if(typeof u==='string' && u.startsWith('data:')){ const blob=await (await fetch(u)).blob(); const id=await idbPutBlob('aud', blob); auds.push('idb:'+id);} else imgs.push(u); }
       n.images=imgs.length?imgs:null; n.audio=auds.length?auds:null; n._uid=genUid(); newOnes.push(n);
     }
     const adds=readLocalAdds(); adds.push(...newOnes); saveLocalAdds(adds);
-    master=master.concat(newOnes); sortMaster(); timeline.innerHTML=''; pool.length=0; refillPool(); loadMore();
+    master=master.concat(newOnes); sortMaster(); rebuild();
     alert('Imported '+newOnes.length+' cards.');
   }catch(e){ alert('Import failed: '+e.message); }
   importInp.value='';
 });
+
+/* ========= Misc ========= */
+function rebuild(){ timeline.innerHTML=''; pool.length=0; refillPool(); loadMore(); }
+document.addEventListener('keydown', e=>{ if(e.key==='Escape' && modal.style.display==='flex') modal.style.display='none'; });
 </script>
 </body>
 </html>
