@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-<title>Flash Cards — Date-wise + Add from UI</title>
+<title>Flash Cards — Date-wise (dd-mm-yyyy) + Add/Delete + Image/Audio</title>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <style>
 :root{--bg:#0f1220;--card:#181c2f;--ink:#eef1ff;--muted:#9aa3c7;--line:#2a3052;--accent:#6ca8ff;--ok:#7bd88f;--bad:#ff7575}
@@ -16,7 +16,7 @@ h1{margin:0;font-size:18px}
 .btn:active{transform:scale(.98)}
 .badge{display:inline-flex;gap:6px;align-items:center;padding:3px 10px;border:1px solid var(--line);border-radius:9999px;color:var(--muted);font-size:12px}
 
-/* Start screen */
+/* Start */
 #startScreen{position:fixed;inset:0;display:grid;place-items:center;background:var(--bg);z-index:5;border-top:6px solid var(--accent);border-bottom:6px solid var(--accent)}
 .start-btn{user-select:none;cursor:pointer;min-width:220px;padding:18px 28px;border:3px solid var(--accent);border-radius:9999px;font-weight:700;font-size:22px;background:transparent;color:var(--ink);box-shadow:0 10px 30px rgba(0,0,0,.25), inset 0 0 0 9999px rgba(108,168,255,.06)}
 #loading{margin-top:14px;text-align:center;color:var(--muted);font-size:14px}
@@ -25,20 +25,22 @@ h1{margin:0;font-size:18px}
 /* Timeline + cards */
 .timeline{position:relative;margin:8px auto}
 .timeline:before{content:"";position:absolute;left:calc(50% - 2px);top:0;bottom:0;width:4px;background:var(--line);border-radius:2px;opacity:.8}
-.card{position:relative;display:flex;justify-content:center;align-items:center;width:min(92%,560px);margin:28px auto;padding:0;border:none;background:transparent;perspective:1000px}
+.card{position:relative;display:flex;justify-content:center;align-items:center;width:min(92%,560px);margin:34px auto 32px;padding:0;border:none;background:transparent;perspective:1000px}
 .card::after{content:"";position:absolute;left:50%;bottom:-28px;transform:translateX(-50%);width:2px;height:28px;background:var(--line)}
 .card:last-child::after{display:none}
-.pill{position:relative;width:100%;min-height:92px;border-radius:9999px;border:3px solid var(--accent);background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.01));box-shadow:0 10px 30px rgba(0,0,0,.25), inset 0 0 0 9999px rgba(108,168,255,.05);transform-style:preserve-3d;transition:transform .45s cubic-bezier(.2,.7,.2,1)}
+.pill{position:relative;width:100%;min-height:110px;border-radius:9999px;border:3px solid var(--accent);background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.01));box-shadow:0 10px 30px rgba(0,0,0,.25), inset 0 0 0 9999px rgba(108,168,255,.05);transform-style:preserve-3d;transition:transform .45s cubic-bezier(.2,.7,.2,1)}
 .card.flipped .pill{transform:rotateY(180deg)}
 .side{position:absolute;inset:0;display:flex;flex-direction:column;gap:10px;align-items:center;justify-content:center;padding:14px 22px;text-align:center;font-size:22px;font-weight:700;backface-visibility:hidden;border-radius:9999px}
 .side.back{transform:rotateY(180deg)}
 .side .hint{font-weight:600;font-size:12px;color:var(--muted)}
-.dateChip{position:absolute;top:-18px;left:50%;transform:translateX(-50%);background:var(--bg);color:var(--ok);border:2px solid var(--ok);font-weight:700;font-size:12px;padding:2px 10px;border-radius:9999px;white-space:nowrap}
+.dateChip{position:absolute;top:-22px;left:50%;transform:translateX(-50%);background:var(--bg);color:var(--ok);border:2px solid var(--ok);font-weight:700;font-size:12px;padding:2px 10px;border-radius:9999px;white-space:nowrap}
+.delBtn{position:absolute;top:-26px;right:-2px;border:1px solid var(--line);background:var(--card);color:#ffd1d1;border-radius:999px;padding:4px 8px;font-size:12px;cursor:pointer}
+.delBtn:hover{border-color:#ff8a8a;color:#fff;background:#7a1d1d}
 #sentinel{height:1px}
 
 /* Media */
 .mediaBox{width:100%;max-width:460px}
-.mediaImg{display:block;margin:0 auto;border-radius:14px;border:2px solid var(--line);max-height:200px;width:auto;max-width:100%;object-fit:cover;background:#0b1224}
+.mediaImg{display:block;margin:0 auto;border-radius:14px;border:2px solid var(--line);max-height:220px;width:auto;max-width:100%;object-fit:cover;background:#0b1224}
 .mediaNote{font:600 12px/1.2 system-ui;color:var(--muted);margin-top:4px}
 .audioWrap{width:100%;max-width:460px}
 audio{width:100%;outline:none;border-radius:10px}
@@ -62,10 +64,10 @@ hr{border:none;border-top:1px solid var(--line);margin:8px 0}
   <div class="tools" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
     <button id="addBtn" class="btn">＋ Add</button>
     <button id="exportBtn" class="btn">Export JSON</button>
-    <label class="btn" style="cursor:pointer">
-      Import JSON<input id="importInp" type="file" accept=".json,application/json" hidden>
+    <label class="btn" style="cursor:pointer">Import JSON
+      <input id="importInp" type="file" accept=".json,application/json" hidden>
     </label>
-    <span class="badge">Tap card: Date → Event → Details → Place</span>
+    <span class="badge">Tap: Date → Event → Details → Place → Image → Audio</span>
   </div>
 </header>
 
@@ -75,10 +77,10 @@ hr{border:none;border-top:1px solid var(--line);margin:8px 0}
 </div>
 
 <footer>
-  <div class="badge">Loads <code>cards.json</code> + your local adds (saved in browser)</div>
+  <div class="badge">Loads <code>cards.json</code> + your local adds (browser save). Deletes persist.</div>
 </footer>
 
-<!-- START OVERLAY -->
+<!-- START -->
 <div id="startScreen">
   <div style="text-align:center">
     <button id="startBtn" class="start-btn">Start</button>
@@ -87,7 +89,7 @@ hr{border:none;border-top:1px solid var(--line);margin:8px 0}
   </div>
 </div>
 
-<!-- ADD / EDIT MODAL -->
+<!-- ADD MODAL -->
 <div id="modal" class="modal" role="dialog" aria-modal="true">
   <div class="modalCard">
     <h2 id="modalTitle">Add card</h2>
@@ -129,13 +131,13 @@ hr{border:none;border-top:1px solid var(--line);margin:8px 0}
 </div>
 
 <script>
-/* ===== SETTINGS ===== */
-const JSON_URL = 'cards.json';            // optional; app also works with only local adds
+/* ===== SETTINGS & KEYS ===== */
+const JSON_URL = 'cards.json';          // optional
 const CHUNK = 12;
-const states = ["date","event","details","place"];
-const LSK = 'flashcards_datewise_user_v1';
+const LSK = 'flashcards_datewise_user_v1';         // local adds (normalized)
+const LSK_DEL = 'flashcards_datewise_deleted_v1';  // Set of base-card ids to hide
 
-/* ===== ELs ===== */
+/* ===== ELEMENTS ===== */
 const startBtn=document.getElementById('startBtn'), startScreen=document.getElementById('startScreen');
 const loadingEl=document.getElementById('loading'), errEl=document.getElementById('err');
 const timeline=document.getElementById('timeline'), sentinel=document.getElementById('sentinel');
@@ -148,9 +150,11 @@ const fDate=document.getElementById('fDate'), fPlace=document.getElementById('fP
 const cancelBtn=document.getElementById('cancelBtn'), saveBtn=document.getElementById('saveBtn');
 
 /* ===== DATA ===== */
-let master=[]; // normalized + sorted
-let pool=[];   // loader queue
+let master=[];   // normalized + sorted + filtered for deletions
+let pool=[];     // loader queue
 let io=null;
+const delSet = getDeletionSet();     // Set<string> of _id
+const cardStates = new WeakMap();    // per-card tap sequences
 
 /* ===== BOOT ===== */
 startBtn.addEventListener('click', init);
@@ -160,13 +164,17 @@ async function init(){
     let base=[];
     try{
       const res=await fetch(JSON_URL,{cache:'no-store'});
-      if(res.ok){ base = await res.json(); }
-    }catch(_){ /* ok if no cards.json */ }
+      if(res.ok) base = await res.json();
+    }catch(_){ /* ok if missing */ }
     if(!Array.isArray(base)) base = [];
-    const localAdds = readLocalAdds();     // already normalized objects
-    // normalize base (might be unnormalized)
-    const normBase = base.map(normalize).filter(x=>x.dateTs!=null);
-    master = normBase.concat(localAdds);
+
+    // normalize base and local adds
+    const normBase = base.map(x=>normalize(x,false)).filter(x=>x.dateTs!=null);
+    const localAdds = readLocalAdds(); // already normalized with _local true
+
+    // merge & filter deletions (only hide base-matching ids)
+    master = normBase.filter(x=>!delSet.has(x._id)).concat(localAdds);
+
     sortMaster();
     refillPool();
     startScreen.style.display='none';
@@ -196,24 +204,64 @@ function sortMaster(){ master.sort((a,b)=>a.dateTs-b.dateTs); }
 function addCard(d){
   const card = el('button','card'); card.dataset.stateIndex="0";
   const pill = el('div','pill'); const front = el('div','side front'); const back = el('div','side back');
-  front.innerHTML = renderFace('date',d); back.innerHTML = renderFace('event',d); pill.append(front,back);
-  const chip = el('div','dateChip', d.dateStr); card.append(pill,chip);
+
+  // Per-card tap sequence: Date → Event → Details → Place → [Image?] → [Audio?]
+  const seq = buildStateSequence(d);
+  cardStates.set(card, seq);
+
+  front.innerHTML = renderFace(seq[0], d);
+  back.innerHTML  = renderFace(seq[1] ?? seq[0], d); // preload next if exists
+  pill.append(front, back);
+
+  const chip = el('div','dateChip', d.dateStr);
+  const del = el('button','delBtn','🗑 Delete');
+  del.title = 'Delete this card';
+  del.addEventListener('click', (ev)=>{
+    ev.stopPropagation();
+    handleDelete(d);
+  });
+
+  card.append(pill, chip, del);
 
   card.addEventListener('click', (ev)=>{
-    if(ev.target.tagName==='AUDIO' || ev.target.closest('.audioWrap')) return;
-    let idx=Number(card.dataset.stateIndex); const next=(idx+1)%states.length;
-    const showBack = next%2===1; (showBack?back:front).innerHTML = renderFace(states[next], d);
-    card.classList.toggle('flipped', showBack); card.dataset.stateIndex=String(next);
+    if(ev.target.tagName==='AUDIO' || ev.target.closest('.audioWrap')) return; // don't flip while using audio controls
+    const seq = cardStates.get(card) || ['date'];
+    let idx = Number(card.dataset.stateIndex);
+    const next = (idx + 1) % seq.length;
+    const nextFace = seq[next];
+    const showBack = next % 2 === 1;
+    (showBack ? back : front).innerHTML = renderFace(nextFace, d);
+    card.classList.toggle('flipped', showBack);
+    card.dataset.stateIndex = String(next);
   });
+
   timeline.appendChild(card);
 }
-function renderFace(kind,d){
-  const imgHtml = renderImage(d), audHtml = renderAudio(d);
-  if(kind==='date')   return `<div><div style="font-size:26px;font-weight:800">${esc(d.dateStr)}</div>${imgHtml}${audHtml}<div class="hint">Tap to see event</div></div>`;
-  if(kind==='event')  return `<div><div style="font-size:20px;font-weight:800">${esc(d.event||'—')}</div>${imgHtml}${audHtml}<div class="hint">Tap for details</div></div>`;
-  if(kind==='details')return `<div><div style="font-size:16px;font-weight:700;max-width:90%">${esc(d.details||'—')}</div>${imgHtml}${audHtml}<div class="hint">Tap for place</div></div>`;
-  return `<div><div style="font-size:18px;font-weight:800">${esc(d.place||'—')}</div>${imgHtml}${audHtml}<div class="hint">Tap to return to date</div></div>`;
+
+function buildStateSequence(d){
+  const seq = ['date','event','details','place'];
+  if(hasImages(d)) seq.push('image');
+  if(hasAudio(d))  seq.push('audio');
+  return seq;
 }
+
+function renderFace(kind,d){
+  if(kind==='date')   return faceWrap(`<div style="font-size:26px;font-weight:800">${esc(d.dateStr)}</div>`, 'Tap to see event');
+  if(kind==='event')  return faceWrap(`<div style="font-size:20px;font-weight:800">${esc(d.event||'—')}</div>`, 'Tap for details');
+  if(kind==='details')return faceWrap(`<div style="font-size:16px;font-weight:700;max-width:90%">${esc(d.details||'—')}</div>`, 'Tap for place');
+  if(kind==='place')  return faceWrap(`<div style="font-size:18px;font-weight:800">${esc(d.place||'—')}</div>`, hasImages(d)?'Tap for image':(hasAudio(d)?'Tap for audio':'Tap to return to date'));
+  if(kind==='image'){
+    const imgHtml = renderImage(d);
+    return faceWrap(imgHtml || `<div class="mediaNote">No image</div>`, hasAudio(d)?'Tap for audio':'Tap to return to date');
+  }
+  if(kind==='audio'){
+    const audHtml = renderAudio(d);
+    return faceWrap(audHtml || `<div class="mediaNote">No audio</div>`, 'Tap to return to date');
+  }
+  return faceWrap('—','Tap to return');
+}
+function faceWrap(inner, hint){ return `<div>${inner}<div class="hint">${esc(hint)}</div></div>`; }
+
 function renderImage(d){
   const arr = toArr(d.image||d.images); if(!arr.length) return '';
   const src = String(arr[0]); const more = arr.length>1?`<div class="mediaNote">+${arr.length-1} more image(s)</div>`:'';
@@ -223,17 +271,42 @@ function renderAudio(d){
   const arr = toArr(d.audio||d.audios||d.sound); if(!arr.length) return '';
   return `<div class="audioWrap"><audio controls preload="none">${arr.map(u=>`<source src="${u}">`).join('')}</audio></div>`;
 }
+const hasImages = d => toArr(d.image||d.images).length>0;
+const hasAudio  = d => toArr(d.audio||d.audios||d.sound).length>0;
+
+/* ===== DELETE ===== */
+function handleDelete(d){
+  if(!confirm(`Delete card on ${d.dateStr}?`)) return;
+
+  if(d._local){ // remove only from local adds store
+    const adds = readLocalAdds();
+    const idx = adds.findIndex(it => (it._uid && d._uid && it._uid===d._uid) || it._id===d._id);
+    if(idx>-1){ adds.splice(idx,1); localStorage.setItem(LSK, JSON.stringify(adds)); }
+  }else{
+    // persist deletion id for base cards
+    delSet.add(d._id);
+    saveDeletionSet(delSet);
+  }
+
+  // remove from master + rebuild UI
+  master = master.filter(x => x !== d);
+  rebuildTimeline();
+}
+
+function rebuildTimeline(){
+  timeline.innerHTML=''; pool.length=0; refillPool(); loadMore();
+}
 
 /* ===== ADD FROM UI ===== */
-addBtn.addEventListener('click', ()=>{ openModal(); });
-
+addBtn.addEventListener('click', ()=> openModal());
 cancelBtn.addEventListener('click', closeModal);
 modal.addEventListener('click', (e)=>{ if(e.target===modal) closeModal(); });
 
 function openModal(){
   modalTitle.textContent='Add card';
-  modalErr.textContent=''; fDate.value=''; fPlace.value=''; fEvent.value='';
-  fDetails.value=''; fImgUrls.value=''; fAudUrls.value=''; fImgFiles.value=''; fAudFiles.value='';
+  modalErr.textContent='';
+  fDate.value=''; fPlace.value=''; fEvent.value=''; fDetails.value='';
+  fImgUrls.value=''; fAudUrls.value=''; fImgFiles.value=''; fAudFiles.value='';
   modal.style.display='flex'; fDate.focus();
 }
 function closeModal(){ modal.style.display='none'; }
@@ -242,44 +315,32 @@ saveBtn.addEventListener('click', async ()=>{
   try{
     modalErr.textContent='';
     const dateStr = fDate.value.trim();
-    const parsed = parseDDMMYYYY(dateStr);
-    if(!parsed) throw new Error('Enter date as dd-mm-yyyy, e.g., 26-01-1950');
-    const {ts,y,m,d} = parsed;
+    const p = parseDDMMYYYY(dateStr);
+    if(!p) throw new Error('Enter date as dd-mm-yyyy, e.g., 26-01-1950');
+    const {ts,y,m,d} = p;
 
     const imgs = splitUrls(fImgUrls.value);
     const auds = splitUrls(fAudUrls.value);
-
-    // read attached files as data-URLs
     const imgData = await readFilesAsDataUrls(fImgFiles.files);
     const audData = await readFilesAsDataUrls(fAudFiles.files);
 
     const item = {
-      dateTs: ts, dateStr: [pad(d),pad(m),y].join('-'),
-      year:y, month:m, day:d,
+      dateTs: ts, dateStr: [pad(d),pad(m),y].join('-'), year:y, month:m, day:d,
       event: valOrNull(fEvent.value), details: valOrNull(fDetails.value), place: valOrNull(fPlace.value),
       images: imgs.concat(imgData), audio: auds.concat(audData),
-      _local:true
+      _local:true, _uid: genUid()
     };
+    item._id = makeId(item); // content-based id
 
-    // persist to localStorage
-    const adds = readLocalAdds();
-    adds.push(item);
+    // persist local
+    const adds = readLocalAdds(); adds.push(item);
     localStorage.setItem(LSK, JSON.stringify(adds));
 
-    // merge into master + rerender in order
+    // merge + sort + render
     master.push(item); sortMaster(); rebuildTimeline();
-
     closeModal();
   }catch(err){ modalErr.textContent = err.message; }
 });
-
-function rebuildTimeline(){
-  // reset rendered UI (quick for hundreds of items)
-  timeline.innerHTML='';
-  pool.length = 0;
-  refillPool();
-  loadMore();
-}
 
 /* ===== EXPORT / IMPORT ===== */
 exportBtn.addEventListener('click', ()=>{
@@ -291,14 +352,13 @@ exportBtn.addEventListener('click', ()=>{
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
   a.download = 'cards-export.json'; a.click(); URL.revokeObjectURL(a.href);
 });
-
 importInp.addEventListener('change', async ()=>{
   const file = importInp.files?.[0]; if(!file) return;
   try{
     const text = await file.text(); const arr = JSON.parse(text);
     if(!Array.isArray(arr)) throw new Error('JSON must be an array');
     const adds = readLocalAdds();
-    const newOnes = arr.map(normalize).filter(x=>x.dateTs!=null);
+    const newOnes = arr.map(x=>normalize(x,true)).filter(x=>x.dateTs!=null).map(x=>({_local:true,_uid:genUid(),...x, _id:makeId(x)}));
     adds.push(...newOnes);
     localStorage.setItem(LSK, JSON.stringify(adds));
     master = master.concat(newOnes); sortMaster(); rebuildTimeline();
@@ -307,21 +367,12 @@ importInp.addEventListener('change', async ()=>{
   importInp.value='';
 });
 
-/* ===== HELPERS ===== */
-function readLocalAdds(){
-  try{
-    const raw = JSON.parse(localStorage.getItem(LSK) || '[]');
-    // they are already normalized (we store normalized), but normalize again safely:
-    return Array.isArray(raw) ? raw.map(normalizeLocal).filter(x=>x.dateTs!=null) : [];
-  }catch{ return []; }
-}
-
-function normalize(item){
-  // For base JSON (fields may be arbitrary)
+/* ===== NORMALIZE / STORAGE ===== */
+function normalize(item, asLocal){
   const dateRaw = item.date ?? item.Date ?? item['dd-mm-yyyy'] ?? item.date_ddmmyyyy ?? null;
   const p = parseDDMMYYYY(dateRaw); if(!p) return {dateTs:null};
   const {ts,y,m,d} = p;
-  return {
+  const obj = {
     dateTs:ts, dateStr:[pad(d),pad(m),y].join('-'), year:y, month:m, day:d,
     event: item.event ?? item.Event ?? item.title ?? item.Title ?? null,
     details: item.details ?? item.Details ?? item.desc ?? item.Description ?? null,
@@ -329,13 +380,36 @@ function normalize(item){
     images: item.images ?? item.image ?? null,
     audio: item.audio ?? item.audios ?? null
   };
+  obj._id = makeId(obj);
+  if(asLocal){ obj._local = true; obj._uid = genUid(); }
+  return obj;
 }
-function normalizeLocal(item){
-  // Local adds we saved already have normalized fields; keep them
-  if(item.dateTs && item.dateStr) return item;
-  return normalize(item);
+function readLocalAdds(){
+  try{
+    const raw = JSON.parse(localStorage.getItem(LSK) || '[]');
+    if(!Array.isArray(raw)) return [];
+    // they should already be normalized; ensure _id exists
+    return raw.map(x => { if(!x._id) x._id = makeId(x); return x; });
+  }catch{ return []; }
 }
 
+/* ===== ID / DELETIONS ===== */
+function makeId(o){
+  const key = [String(o.dateStr||''), String(o.event||''), String(o.details||''), String(o.place||'')].join('|').toLowerCase().trim();
+  try{ return btoa(unescape(encodeURIComponent(key))).replace(/=+$/,''); }catch{ return key; }
+}
+function genUid(){ return (Date.now().toString(36)+Math.random().toString(36).slice(2,8)); }
+function getDeletionSet(){
+  try{
+    const arr = JSON.parse(localStorage.getItem(LSK_DEL) || '[]');
+    return new Set(Array.isArray(arr)?arr:[]);
+  }catch{ return new Set(); }
+}
+function saveDeletionSet(set){
+  localStorage.setItem(LSK_DEL, JSON.stringify([...set]));
+}
+
+/* ===== UTIL ===== */
 function parseDDMMYYYY(s){
   if(!s) return null;
   const m = String(s).trim().match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
@@ -351,8 +425,6 @@ const toArr=v=>v==null?[]:(Array.isArray(v)?v:[v]);
 const el=(t,c,txt)=>{const e=document.createElement(t); if(c) e.className=c; if(txt!=null) e.textContent=txt; return e;};
 const valOrNull=v=>{v=String(v||'').trim(); return v||null;};
 const splitUrls=str=>!str?[]:str.split(',').map(s=>s.trim()).filter(Boolean);
-
-/* read any FileList as data-URLs */
 async function readFilesAsDataUrls(fileList){
   if(!fileList || !fileList.length) return [];
   const tasks = [...fileList].map(f => new Promise((resolve,reject)=>{
@@ -361,9 +433,8 @@ async function readFilesAsDataUrls(fileList){
   return Promise.all(tasks);
 }
 
-/* Start overlay control */
+/* ESC / modal */
 document.addEventListener('keydown', e=>{ if(e.key==='Escape' && modal.style.display==='flex') closeModal(); });
-
 </script>
 </body>
 </html>
