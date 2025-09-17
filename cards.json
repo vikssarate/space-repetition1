@@ -1,0 +1,25 @@
+[
+  {
+    "date": "15-08-1947",
+    "event": "Independence of India",
+    "details": "Dominion of India established; Jawaharlal Nehru became the first Prime Minister.",
+    "place": "New Delhi",
+    "images": ["images/independence.jpg"],
+    "audio": ["audio/independence.mp3"]
+  },
+  {
+    "date": "26-01-1950",
+    "event": "Republic Day — Constitution enforced",
+    "details": "Dr. Rajendra Prasad sworn in as the first President of India.",
+    "place": "New Delhi",
+    "image": "images/republic.jpg",
+    "audio": "audio/republic.m4a"
+  },
+  {
+    "date": "25-10-1951",
+    "event": "First General Elections begin",
+    "details": "The first national elections in independent India were conducted over several months.",
+    "place": "India",
+    "images": ["images/elections-1.jpg", "images/elections-2.jpg"]
+  }
+]
